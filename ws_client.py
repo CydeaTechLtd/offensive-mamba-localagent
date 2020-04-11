@@ -205,6 +205,8 @@ while True:
     if(response['success']):
         token = response['token']
         break
+    else:
+        print("Error: " + response['message'])
 
 print('Trying to connect . . . ', )
 sio.connect(BASE_URL, headers={"Authorization": "Bearer " + token})
