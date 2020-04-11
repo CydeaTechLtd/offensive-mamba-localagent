@@ -138,40 +138,33 @@ def msgrpc_service(req):
         # client.request("POST", uri, params, headers)
         # resp = client.getresponse()
         resp = requests.post("http://" + host + ":" + str(port) +uri, data=params, headers=headers)
-        open('response.bin', "wb").write(resp.content)
-        sio.emit("response", data={"request_id": req['request_id'],"service": "msgrpc",'success': True, 'data': resp.content})
-        return
-        res = msgpack.unpackb(resp.content, strict_map_key=False, raw=False)
-        print("Response: " + str(res))
-        decoded_res = []
-        for key, value in res.items():
-            op = []
-            if type(key).__name__ == "bytes":
-                op.append({'type': type(key).__name__, 'value': key.decode('utf-8')})
-            else:
-                op.append({'type': type(key).__name__, 'value': key})
-            if type(value).__name__ == "bytes":
-                op.append({'type': type(value).__name__, 'value': value.decode('utf-8')})
-            else:
-                op.append({'type': type(value).__name__, 'value': value})
-            decoded_res.append(op)
-        print("\n\nDecoded: ", str(decoded_res))
-        response = {
+        data = resp.content
+        msgpack_response = msgpack.unpackb(data)
+        if meth == 'auth.login' and msgpack_response.get(b'result') != b'success':
+            util.print_message(FAIL, 'MsfRPC: Authentication Failed. Please check if MsgRPC is loaded with same credentials which are specified in config.ini')
+            response = {
             "request_id": req['request_id'],
             "service": "msgrpc",
-            "success": True,
-            "resp": decoded_res
-        }
-        sio.emit("response", data=response)
+            "success": False,
+            "reason": "Invalid Credentials for MsgRPC on Client-Side"
+            }
+            sio.emit("response", data=response)
+            sio.disconnect()
+            return
+        sio.emit("response", data={"request_id": req['request_id'],"service": "msgrpc",'success': True, 'data': data})
     except Exception as err:
         traceback.print_exc()
+        if (str(err).find("[Errno 111]")):
+            util.print_message(FAIL, "MSF Console/MSGRPC in not running... Exiting . . .")
         response = {
             "request_id": req['request_id'],
             "service": "msgrpc",
             "success": False,
-            "reason": "auth"
+            "reason": str(err)
         }
         sio.emit("response", data=response) 
+        sio.disconnect()
+        # os._exit(1)
 
 @sio.event
 def connect():
