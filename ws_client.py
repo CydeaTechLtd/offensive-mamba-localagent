@@ -17,8 +17,11 @@ BASE_URL = "http://115.186.176.141:8080"
 HEADERS = {'Content-Type': 'application/json'}
 
 sio = socketio.Client()
-
-
+token = ""
+def connect_to_server():
+    print('Trying to connect . . . ', )
+    sio.connect(BASE_URL, headers={"Authorization": "Bearer " + token})
+    sio.wait()
 
 
 def ip4_addresses():
@@ -35,7 +38,7 @@ def service_get_agentip(req):
         'request_id': req['request_id'],
         'service': 'agent_ip',
         'success': True,
-        'agent_ip': '172.19.0.1'
+        'agent_ip': '172.18.0.1'
     }
     sio.emit('response', data=response)
     return
@@ -131,7 +134,7 @@ def msgrpc_service(req):
     resp = ''
     
     
-    host = "172.19.0.1"
+    host = "172.18.0.1"
     port = int(config['Common']['server_port'])
     # client = http.client.HTTPSConnection(host, port)
     try:
@@ -181,6 +184,8 @@ def connection_failed(data):
 @sio.event
 def disconnect():
     print('Disconnected from server')
+    time.sleep(1)
+    connect_to_server()
     exit(0)
 
 @sio.event
@@ -195,7 +200,7 @@ def request(data):
         service_get_agentip(req)
 
 
-token = ""
+
 while True:
     username = input("Enter Username: ")
     password = getpass("Enter Password: ")
@@ -207,7 +212,4 @@ while True:
         break
     else:
         print("Error: " + response['message'])
-
-print('Trying to connect . . . ', )
-sio.connect(BASE_URL, headers={"Authorization": "Bearer " + token})
-sio.wait()
+    connect_to_server()
