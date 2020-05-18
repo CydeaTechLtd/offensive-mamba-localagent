@@ -1,4 +1,4 @@
 requests
 python-socketio
 python-nmap
-msgpack
+msgpack===0.6.2

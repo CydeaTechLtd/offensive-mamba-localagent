@@ -17,8 +17,10 @@ BASE_URL = "http://115.186.176.141:8080"
 HEADERS = {'Content-Type': 'application/json'}
 
 sio = socketio.Client()
-
-
+token = ""
+def connect_to_server():
+    print('Trying to connect . . . ', )
+    sio.connect(BASE_URL, headers={"Authorization": "Bearer " + token})
 
 
 def ip4_addresses():
@@ -35,7 +37,7 @@ def service_get_agentip(req):
         'request_id': req['request_id'],
         'service': 'agent_ip',
         'success': True,
-        'agent_ip': '172.19.0.1'
+        'agent_ip': '172.18.0.1'
     }
     sio.emit('response', data=response)
     return
@@ -131,47 +133,40 @@ def msgrpc_service(req):
     resp = ''
     
     
-    host = "172.19.0.1"
+    host = req['agent']
     port = int(config['Common']['server_port'])
     # client = http.client.HTTPSConnection(host, port)
     try:
         # client.request("POST", uri, params, headers)
         # resp = client.getresponse()
         resp = requests.post("http://" + host + ":" + str(port) +uri, data=params, headers=headers)
-        open('response.bin', "wb").write(resp.content)
-        sio.emit("response", data={"request_id": req['request_id'],"service": "msgrpc",'success': True, 'data': resp.content})
-        return
-        res = msgpack.unpackb(resp.content, strict_map_key=False, raw=False)
-        print("Response: " + str(res))
-        decoded_res = []
-        for key, value in res.items():
-            op = []
-            if type(key).__name__ == "bytes":
-                op.append({'type': type(key).__name__, 'value': key.decode('utf-8')})
-            else:
-                op.append({'type': type(key).__name__, 'value': key})
-            if type(value).__name__ == "bytes":
-                op.append({'type': type(value).__name__, 'value': value.decode('utf-8')})
-            else:
-                op.append({'type': type(value).__name__, 'value': value})
-            decoded_res.append(op)
-        print("\n\nDecoded: ", str(decoded_res))
-        response = {
+        data = resp.content
+        msgpack_response = msgpack.unpackb(data)
+        if meth == 'auth.login' and msgpack_response.get(b'result') != b'success':
+            util.print_message(FAIL, 'MsfRPC: Authentication Failed. Please check if MsgRPC is loaded with same credentials which are specified in config.ini')
+            response = {
             "request_id": req['request_id'],
             "service": "msgrpc",
-            "success": True,
-            "resp": decoded_res
-        }
-        sio.emit("response", data=response)
+            "success": False,
+            "reason": "Invalid Credentials for MsgRPC on Client-Side"
+            }
+            sio.emit("response", data=response)
+            sio.disconnect()
+            return
+        sio.emit("response", data={"request_id": req['request_id'],"service": "msgrpc",'success': True, 'data': data})
     except Exception as err:
         traceback.print_exc()
+        if (str(err).find("[Errno 111]")):
+            util.print_message(FAIL, "MSF Console/MSGRPC in not running... Exiting . . .")
         response = {
             "request_id": req['request_id'],
             "service": "msgrpc",
             "success": False,
-            "reason": "auth"
+            "reason": str(err)
         }
         sio.emit("response", data=response) 
+        sio.disconnect()
+        # os._exit(1)
 
 @sio.event
 def connect():
@@ -188,6 +183,9 @@ def connection_failed(data):
 @sio.event
 def disconnect():
     print('Disconnected from server')
+    time.sleep(1)
+    connect_to_server()
+    sio.wait()
     exit(0)
 
 @sio.event
@@ -202,17 +200,17 @@ def request(data):
         service_get_agentip(req)
 
 
-token = ""
+
 while True:
-    username = input("Enter Username: ")
-    password = getpass("Enter Password: ")
+    username = "testaccount" # input("Enter Username: ")
+    password = "Abcd@123" # getpass("Enter Password: ")
     credentials = {"username": username, "password": password}
     resp = requests.post(BASE_URL + "/login/", data=json.dumps(credentials), headers=HEADERS)
     response = resp.json()
     if(response['success']):
         token = response['token']
         break
-
-print('Trying to connect . . . ', )
-sio.connect(BASE_URL, headers={"Authorization": "Bearer " + token})
+    else:
+        print("Error: " + response['message'])
+connect_to_server()
 sio.wait()
