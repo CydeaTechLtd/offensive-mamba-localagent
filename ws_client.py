@@ -97,6 +97,7 @@ def decode_array(arr):
 
 # Send HTTP request.
 def msgrpc_service(req):
+    print(req)
     util = Utility()
     # Read config.ini.
     full_path = os.path.dirname(os.path.abspath(__file__))
