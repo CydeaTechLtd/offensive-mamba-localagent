@@ -33,11 +33,12 @@ def ip4_addresses():
 
 
 def service_get_agentip(req):
+    # TODO Guess agent IP using tace_Route
     response = {
         'request_id': req['request_id'],
         'service': 'agent_ip',
         'success': True,
-        'agent_ip': '172.18.0.1'
+        'agent_ip': '172.28.128.2'
     }
     sio.emit('response', data=response)
     return
