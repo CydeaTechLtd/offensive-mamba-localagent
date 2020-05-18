@@ -21,7 +21,6 @@ token = ""
 def connect_to_server():
     print('Trying to connect . . . ', )
     sio.connect(BASE_URL, headers={"Authorization": "Bearer " + token})
-    sio.wait()
 
 
 def ip4_addresses():
@@ -134,7 +133,7 @@ def msgrpc_service(req):
     resp = ''
     
     
-    host = "172.18.0.1"
+    host = req['agent']
     port = int(config['Common']['server_port'])
     # client = http.client.HTTPSConnection(host, port)
     try:
@@ -186,6 +185,7 @@ def disconnect():
     print('Disconnected from server')
     time.sleep(1)
     connect_to_server()
+    sio.wait()
     exit(0)
 
 @sio.event
@@ -202,8 +202,8 @@ def request(data):
 
 
 while True:
-    username = input("Enter Username: ")
-    password = getpass("Enter Password: ")
+    username = "testaccount" # input("Enter Username: ")
+    password = "Abcd@123" # getpass("Enter Password: ")
     credentials = {"username": username, "password": password}
     resp = requests.post(BASE_URL + "/login/", data=json.dumps(credentials), headers=HEADERS)
     response = resp.json()
@@ -212,4 +212,5 @@ while True:
         break
     else:
         print("Error: " + response['message'])
-    connect_to_server()
+connect_to_server()
+sio.wait()
