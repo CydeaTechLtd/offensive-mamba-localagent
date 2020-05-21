@@ -11,8 +11,10 @@ from util import Utility
 from __const import *
 import http.client
 from netifaces import interfaces, ifaddresses, AF_INET
+from scapy.layers.inet import traceroute
 import traceback
 import requests
+MASTER_IP = "115.186.176.141"
 BASE_URL = "http://115.186.176.141:8080"
 HEADERS = {'Content-Type': 'application/json'}
 
@@ -34,11 +36,18 @@ def ip4_addresses():
 
 def service_get_agentip(req):
     # TODO Guess agent IP using tace_Route
+    agent_ip = False
+    if req['ip'] == MASTER_IP:
+        agent_ip = req['ip']
+    else: 
+        result, unans = traceroute('115.186.176.141', maxttl=30, verbose=False)
+        if len(result) > 0:
+            agent_ip = result[0][1].dst
     response = {
         'request_id': req['request_id'],
         'service': 'agent_ip',
-        'success': True,
-        'agent_ip': '172.28.128.2'
+        'success': agent_ip is not False,
+        'agent_ip': agent_ip
     }
     sio.emit('response', data=response)
     return
