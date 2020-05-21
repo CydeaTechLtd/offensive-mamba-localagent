@@ -40,7 +40,7 @@ def service_get_agentip(req):
     if req['ip'] == MASTER_IP:
         agent_ip = req['ip']
     else: 
-        result, unans = traceroute('115.186.176.141', maxttl=30, verbose=False)
+        result, unans = traceroute(req['ip'], maxttl=30, verbose=False)
         if len(result) > 0:
             agent_ip = result[0][1].dst
     response = {
