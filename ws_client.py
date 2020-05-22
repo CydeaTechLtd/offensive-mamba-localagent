@@ -25,17 +25,7 @@ def connect_to_server():
     sio.connect(BASE_URL, headers={"Authorization": "Bearer " + token})
 
 
-def ip4_addresses():
-    ip_list = []
-    for interface in interfaces():
-        if AF_INET in ifaddresses(interface):
-            for link in ifaddresses(interface)[AF_INET]:
-                ip_list.append(link['addr'])
-    return ip_list
-
-
 def service_get_agentip(req):
-    # TODO Guess agent IP using tace_Route
     agent_ip = False
     if req['ip'] == MASTER_IP:
         agent_ip = req['ip']
@@ -51,40 +41,6 @@ def service_get_agentip(req):
     }
     sio.emit('response', data=response)
     return
-    all_ips = ip4_addresses()
-    target_ip = req['ip']
-    matches = [0,0,0,0]
-    agent_ip = ""
-    for i, ip in enumerate(all_ips):
-        split_ip = str(ip).split(".")
-        split_target_ip = str(target_ip).split(".")
-        if split_ip == split_target_ip:
-            matches[i]  = 4
-        elif split_ip[:-1] == split_target_ip[:-1]:
-            matches[i] = 3
-        elif split_ip[:-2] == split_target_ip[:-2]:
-            matches[i] = 2
-        elif split_ip[:-3] == split_target_ip[:-3]:
-            matches[i] = 1
-        else:
-            matches[i] = 0
-    if max(matches) > 0:
-        agent_ip = all_ips[matches.index(max(matches))]
-        response = {
-            'request_id': req['request_id'],
-            'service': 'agent_ip',
-            'success': True,
-            'agent_ip': agent_ip
-        }
-        sio.emit('response', data=response)
-    else:
-        response = {
-            'request_id': req['request_id'],
-            'service': 'agent_ip',
-            'success': False,
-            'reason': 'No relevant interface'
-        }
-        sio.emit('response', data=response)
 
 
 def service_nmap(req):
