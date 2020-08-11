@@ -1,3 +1,4 @@
+import sys
 import socketio
 import requests
 import json
@@ -12,6 +13,9 @@ from __const import *
 import http.client
 from netifaces import interfaces, ifaddresses, AF_INET
 from scapy.layers.inet import traceroute
+import pkg_resources
+from pkg_resources import DistributionNotFound, VersionConflict
+from msgpysploit import *
 import traceback
 import requests
 MASTER_IP = "115.186.176.141"
@@ -52,11 +56,29 @@ def service_nmap(req):
         "request_id": req['request_id'],
         "service": "nmap",
         "scandata": scandata,
-        "localfile": scanfile
+        "localfile": scanfile,
+        "cves": scanner.cves
     }
     sio.emit("response", data=response) # Not Thread safe
     sio.sleep(0)
 
+def service_pysploit(req):
+    exploit_id = req['exploit']
+    options = req['options']
+    requirements = req['requirements']
+    response = {'success': False, 'error': 'Unknown Error!!'}
+    try:
+        pkg_resources.require(requirements)
+    except (DistributionNotFound, VersionConflict) as e:
+        response = {'success': False, 'error': 'Could not execute exploit due to dependency errors'}
+        try:
+            response = getattr(sys.modules[__name__], "execute_%s" % exploit_id)(options)
+        except Exception as ex:
+            print("Exception " + str(ex))
+            response = {'success': False, 'error': 'Exploit Not Found'}
+    sio.emit("response", data=response) # Not Thread safe
+    sio.sleep(0)
+    
 
 def decode_array(arr):
     pass
@@ -165,6 +187,8 @@ def request(data):
         msgrpc_service(req)
     elif req['service'] == "agent_ip":
         service_get_agentip(req)
+    elif req['service'] == "pysploit":
+        service_pysploit(req)
 
 
 

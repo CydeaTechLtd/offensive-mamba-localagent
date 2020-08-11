@@ -5,6 +5,8 @@ import configparser
 import nmap
 from util import Utility
 from __const import FAIL, NOTE
+from bs4 import BeautifulSoup as bs
+import json
 
 # from pycvesearch import CVESearch
 
@@ -33,6 +35,7 @@ class SystemScan:
         self.util.print_message(NOTE, "Starting NMAP Scan for Host " + self.ip_address + ". It will take some time to complete. Please be patient...")
         self.scanner.scan(self.ip_address, arguments=self.nmap_arguments)
         self.xml = self.scanner.get_nmap_last_output()
+        self.cves = self.extract_cves_from_nmap_data()
         self.util.print_message(NOTE, "Scan completed for Host " + self.ip_address)
     
     def get_xml_in_file(self):
@@ -40,6 +43,32 @@ class SystemScan:
         os.write(fd, bytes(self.xml, "utf-8"))
         os.close(fd)
         return fname
+    
+    def extract_cves_from_nmap_data(self):
+        nmap_data = self.xml
+        cves = {} # Nested Dict with Portid as main Key CVE id as Key and CVSS as value
+        root = bs(nmap_data, 'lxml')
+        host = root.find("host")
+        ports = host.find("ports")
+        all_ports = ports.find_all("port")
+        for port in all_ports:
+            port_id = port.get("portid")
+            cves[port_id] = {}
+            try:
+                vulners_script=bs(str(list(port.select("script#vulners")[0].children)[0]), 'lxml')
+                all_vulns = vulners_script.select("table table")
+                for vuln in all_vulns:
+                    vuln_type = vuln.select("elem[key=type]")[0].text
+                    cvss = float(vuln.select("elem[key=cvss]")[0].text)
+                    item_id = vuln.select("elem[key=id]")[0].text
+                    is_exploit = json.loads(vuln.select("elem[key=is_exploit]")[0].text)
+                    if(not is_exploit) and vuln_type == "cve":
+                        cves[port_id][item_id] = cvss
+            except Exception as ex:
+                print("Exception: " + str(ex))
+
+        self.cves = cves
+        return cves
 
 if __name__ == "__main__":
     n = SystemScan("115.186.176.141")
