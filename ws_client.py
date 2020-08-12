@@ -11,7 +11,7 @@ import configparser
 from util import Utility
 from __const import *
 import http.client
-from netifaces import interfaces, ifaddresses, AF_INET
+# from netifaces import interfaces, ifaddresses, AF_INET
 from scapy.layers.inet import traceroute
 import pkg_resources
 from pkg_resources import DistributionNotFound, VersionConflict
