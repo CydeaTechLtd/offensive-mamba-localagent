@@ -46,6 +46,7 @@ class SystemScan:
     
     def extract_cves_from_nmap_data(self):
         nmap_data = self.xml
+        print(nmap_data)
         cves = {} # Nested Dict with Portid as main Key CVE id as Key and CVSS as value
         root = bs(nmap_data, 'lxml')
         host = root.find("host")
